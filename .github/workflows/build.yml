@@ -21,7 +21,9 @@ jobs:
     uses: GroupeZ-dev/actions/.github/workflows/build.yml@main
     with:
       project-name: "zAuctionHouse"
-      publish: true
+      publish: false
+      upload-artifact: "always"
+      artifact-glob: "target/*.jar"
       project-to-publish: "API:publish"
       discord-avatar-url: "https://groupez.dev/storage/images/1.png"
     secrets:
