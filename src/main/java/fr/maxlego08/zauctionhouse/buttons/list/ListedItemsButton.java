@@ -15,6 +15,7 @@ import fr.maxlego08.zauctionhouse.api.messages.Message;
 import fr.maxlego08.zauctionhouse.api.utils.IntList;
 import fr.maxlego08.zauctionhouse.api.utils.Permission;
 import fr.maxlego08.zauctionhouse.buttons.confirm.ConfirmHelper;
+import fr.maxlego08.zauctionhouse.buttons.admin.AdminRemoveConfirmButton;
 import fr.maxlego08.zauctionhouse.tax.ZPurchaseCharge;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -63,7 +64,7 @@ public class ListedItemsButton extends PaginateButton {
         for (Item item : pageItems) {
             if (!item.isActivelyListed()) continue;
             int slot = slots.get(slotIndex++);
-            var itemStack = item.buildItemStack(player);
+            var itemStack = item.buildListedItemStack(player);
             var button = inventoryEngine.addItem(isPlayerInventory(), slot, itemStack);
             if (button != null) {
                 button.setClick(createClick(player, inventoryEngine, slot, item, itemStack));
@@ -111,14 +112,15 @@ public class ListedItemsButton extends PaginateButton {
 
             // Apercu du contenu d'un conteneur (V3) : avant l'achat, donc sans verification
             // d'argent ni statut de confirmation pose sur l'annonce.
-            if (openContainerPreview(player, event, item)) return;
+
 
             if ((event.getClick() == ClickType.DROP || event.getClick() == ClickType.MIDDLE) && player.hasPermission(Permission.ZAUCTIONHOUSE_ADMIN_REMOVE_INVENTORY.asPermission())) {
-
-                // ToDo
-
+                AdminRemoveConfirmButton.open(this.plugin, player, item);
                 return;
             }
+
+            // Container previews do not reserve the listing.
+            if (openContainerPreview(player, event, item)) return;
 
             if (item.getSellerUniqueId().equals(player.getUniqueId())) {
 
@@ -225,10 +227,17 @@ public class ListedItemsButton extends PaginateButton {
             return;
         }
 
+        // Statut et detenteur poses ATOMIQUEMENT : une remise en vente concurrente ne peut ni
+        // s'intercaler ni laisser un detenteur perime (cf. ZItem#tryReserve).
+        if (!item.tryReserve(confirmStatus, player.getUniqueId())) {
+            cache.set(PlayerCacheKey.PURCHASE_ITEM, false);
+            manager.clearPlayerCache(player, PlayerCacheKey.ITEMS_LISTED, PlayerCacheKey.ITEMS_SEARCH);
+            inventoryManager.updateInventory(player);
+            return;
+        }
+
         cache.set(PlayerCacheKey.ITEM_SHOW, item);
         cache.set(PlayerCacheKey.CURRENT_PAGE, inventoryManager.getPage(player));
-
-        item.setStatus(confirmStatus);
 
         // Le garde anti-double-clic n'est relache qu'APRES l'engagement, jamais avant.
         cache.set(PlayerCacheKey.PURCHASE_ITEM, false);
@@ -443,7 +452,7 @@ public class ListedItemsButton extends PaginateButton {
         }
 
         // Create a new item stack for the inserted item
-        var itemStack = item.buildItemStack(player);
+        var itemStack = item.buildListedItemStack(player);
         // Add the inserted item to the inventory
         var itemButton = inventoryEngine.addItem(newItemSlot, itemStack);
         if (itemButton != null) itemButton.setClick(createClick(player, inventoryEngine, newItemSlot, item, itemStack));
@@ -495,7 +504,7 @@ public class ListedItemsButton extends PaginateButton {
         // If there was an item at the end of the page that needed to be moved, add it now
         if (itemToAddAtEnd != null) {
             int lastSlot = slots.getLast();
-            var lastItemStack = itemToAddAtEnd.buildItemStack(player);
+            var lastItemStack = itemToAddAtEnd.buildListedItemStack(player);
             var itemButton = inventoryEngine.addItem(lastSlot, lastItemStack);
             if (itemButton != null) {
                 itemButton.setClick(createClick(player, inventoryEngine, lastSlot, itemToAddAtEnd, lastItemStack));

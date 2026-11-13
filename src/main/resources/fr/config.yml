@@ -125,14 +125,16 @@ timezone: auto
 #             Idéal pour: Configurations multi-serveurs, grands hôtels des ventes
 # - MARIADB : Serveur de base de données MariaDB (compatible MySQL)
 #             Idéal pour: Configurations multi-serveurs, grands hôtels des ventes
-# Note: Pour la synchronisation multi-serveur, utilisez MySQL/MariaDB avec l'addon Redis.
+# - POSTGRESQL : Serveur de base de données PostgreSQL ('POSTGRES' est aussi accepté)
+#             Idéal pour: Configurations multi-serveurs, grands hôtels des ventes
+# Note: Pour la synchronisation multi-serveur, utilisez MySQL/MariaDB/PostgreSQL avec l'addon Redis.
 #
 # ATTENTION: SQLITE est INCOMPATIBLE avec l'addon cluster Redis.
 # Chaque serveur garderait son PROPRE fichier de base de donnees, les identifiants d'items
 # entreraient en collision d'un serveur a l'autre et les verrous du cluster ne protegeraient
 # rien - les items SERAIENT dupliques.
 # Avec l'addon installe, SQLITE est desormais refuse: l'addon se desactive lui-meme et ce
-# serveur reste en mono-serveur. Utilisez MYSQL ou MARIADB avec une base PARTAGEE.
+# serveur reste en mono-serveur. Utilisez MYSQL, MARIADB ou POSTGRESQL avec une base PARTAGEE.
 storage-type: SQLITE
 
 # Ecrit un marqueur de format ("V2:" / "NBT:") en tete de chaque ItemStack serialise.
@@ -152,8 +154,8 @@ write-itemstack-format-marker: false
 # Recommandé: Utilisez un nom unique et descriptif (ex: "skyblock", "survival", "creative").
 server-name: skyblock
 
-# Paramètres de connexion pour MySQL/MariaDB.
-# Utilisé uniquement quand 'storage-type' est MYSQL ou MARIADB.
+# Paramètres de connexion pour MySQL/MariaDB/PostgreSQL.
+# Utilisé uniquement quand 'storage-type' est MYSQL, MARIADB ou POSTGRESQL.
 database-configuration:
   # Préfixe appliqué à toutes les tables créées par le plugin.
   # Utile pour partager une BDD avec d'autres plugins et éviter les conflits de noms.
@@ -168,6 +170,7 @@ database-configuration:
 
   # Numéro de port du serveur de base de données.
   # Port par défaut MySQL/MariaDB: 3306
+  # Port par défaut PostgreSQL: 5432
   # Ne changez que si votre BDD utilise un port non standard.
   port: 3306
 
@@ -190,7 +193,7 @@ database-configuration:
   # Recommandé: Garder désactivé en production.
   debug: false
 
-  # Durée de vie maximale d'une connexion MySQL ou MariaDB du pool, en secondes.
+  # Durée de vie maximale d'une connexion MySQL, MariaDB ou PostgreSQL du pool, en secondes.
   # Une connexion plus ancienne est retirée et remplacée. 0 garde les connexions jusqu'à la fermeture du pool.
   # Hikari exige au moins 30 secondes. 1800 correspond à 30 minutes, la valeur par défaut si l'option est absente.
   max-lifetime: 1800
@@ -620,6 +623,7 @@ banned-worlds:
 #   %time-remaining% - Temps restant avant expiration
 #   %date%           - Date de la transaction
 #   %status%         - Message de statut dynamique (acheter/récupérer)
+#   %container-preview% - Indication d'aperçu pour les annonces contenant une shulker
 #   %items%          - Nom d'affichage de l'item
 #   %type%           - Type d'entrée de log (pour les logs admin)
 #   %player%         - Joueur impliqué dans l'action
@@ -638,6 +642,7 @@ item-lore:
     - "<white>☆ #92ffffPrix#8c8c8c: #2CCED2%price%"
     - "<white>⌚ #92ffffExpire#8c8c8c: #969696%time-remaining%"
     - ""
+    - "%container-preview%"
     - "%status%"
 
   # Lore pour les ventes en lot (plusieurs items dans une annonce, ex: boîtes shulker)
@@ -648,6 +653,7 @@ item-lore:
     - "<white>⌚ #92ffffExpire#8c8c8c: #969696%time-remaining%"
     - ""
     - "#8c8c8c• #2CCED2ᴄʟɪᴄ ɢᴀᴜᴄʜᴇ #92ffffᴘᴏᴜʀ ᴠᴏɪʀ ʟᴇ ᴄᴏɴᴛᴇɴᴜ"
+    - "%container-preview%"
     - "%status%"
 
   # Lore pour les items dans l'inventaire des items expirés
@@ -714,16 +720,21 @@ item-lore:
     - ''
     - '#8c8c8c• #2CCED2ᴄʟɪᴄ ɢᴀᴜᴄʜᴇ #92ffffᴘᴏᴜʀ ʀᴇᴛɪʀᴇʀ ᴄᴇᴛ ɪᴛᴇᴍ'
 
+  # Ligne affichée sur les annonces contenant une shulker (ou un autre conteneur) quand action.container-preview est actif.
+  # S'utilise via %container-preview% dans listed-auction-item / multiple-listed-auction-item. Une ligne de lore
+  # contenant uniquement %container-preview% est supprimée si l'annonce ne contient pas de conteneur.
+  container-preview: "#8c8c8c• #2CCED2ᴄʟɪᴄ ᴅʀᴏɪᴛ #92ffffᴘᴏᴜʀ ᴠᴏɪʀ ʟᴇ ᴄᴏɴᴛᴇɴᴜ"
+
   # Messages de statut dynamiques basés sur la relation du spectateur avec l'item
   status:
     # Affiché au vendeur voyant son propre item (clic pour retirer de la vente)
     seller: "#8c8c8c• #2CCED2ᴄʟɪqᴜᴇᴢ #92ffffᴘᴏᴜʀ ʀᴇᴄᴜᴘᴇʀᴇʀ ᴄᴇᴛ ɪᴛᴇᴍ"
     # Affiché aux acheteurs potentiels (clic pour acheter)
     buyer: "#8c8c8c• #2CCED2ᴄʟɪqᴜᴇᴢ #92ffffᴘᴏᴜʀ ᴀᴄʜᴇᴛᴇʀ ᴄᴇᴛ ɪᴛᴇᴍ"
-    # Affiché au vendeur pour l'action clic droit
-    right-seller: "#8c8c8c• #2CCED2ᴄʟɪᴄ ᴅʀᴏɪᴛ #92ffffᴘᴏᴜʀ ʀᴇᴄᴜᴘᴇʀᴇʀ ᴄᴇᴛ ɪᴛᴇᴍ"
-    # Affiché à l'acheteur pour l'action clic droit
-    right-buyer: "#8c8c8c• #2CCED2ᴄʟɪᴄ ᴅʀᴏɪᴛ #92ffffᴘᴏᴜʀ ᴀᴄʜᴇᴛᴇʀ ᴄᴇᴛ ɪᴛᴇᴍ"
+    # Affiché au vendeur sur les ventes en lot (plusieurs items)
+    right-seller: "#8c8c8c• #2CCED2ᴄʟɪqᴜᴇᴢ #92ffffᴘᴏᴜʀ ʀᴇᴄᴜᴘᴇʀᴇʀ ᴄᴇᴛ ɪᴛᴇᴍ"
+    # Affiché aux acheteurs sur les ventes en lot (plusieurs items)
+    right-buyer: "#8c8c8c• #2CCED2ᴄʟɪqᴜᴇᴢ #92ffffᴘᴏᴜʀ ᴀᴄʜᴇᴛᴇʀ ᴄᴇᴛ ɪᴛᴇᴍ"
 
   # Noms lisibles pour les types d'entrées de log
   log-type-names:
